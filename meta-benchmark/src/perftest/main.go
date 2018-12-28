@@ -62,7 +62,7 @@ func mainRecover() {
 // support k m g
 func convert(str string) uint64 {
 	var res uint64 = 0
-	if len(str) > 1 {
+	if len(str) > 0 {
 		str = strings.ToLower(str)
 		if strings.LastIndexAny(str, "kmg") != -1 {
 			tmp, err := strconv.Atoi(str[:len(str)-1])
@@ -154,7 +154,7 @@ func (p *perftest) run(stage string, isRand bool) {
 	var wg sync.WaitGroup
 	wg.Add(int(p.dirs))
 	for d := uint64(0); d < p.dirs; d++ {
-		dir := fmt.Sprintf("client%1d/dir%010d", id, d)
+		dir := fmt.Sprintf("client%d/dir%010d", id, d)
 		err := os.MkdirAll(dir, 0755)
 		checkErr(err)
 		go func(dir string) {
@@ -185,6 +185,8 @@ func (p *perftest) run(stage string, isRand bool) {
 					p.utime(name)
 				case "rename":
 					p.rename(name)
+				case "unlink":
+					p.unlink(name)
 				default:
 					log.Fatal("invalid stage", stage)
 				}
@@ -192,16 +194,13 @@ func (p *perftest) run(stage string, isRand bool) {
 			}
 		}(dir)
 	}
-	report := func() {
+	defer func() {
+		wg.Wait()
 		elap := time.Now().Sub(start)
 		log.Printf("%14s %14.3f %14.3f %14.3f %-v", stage,
 			float64(max)/interval.Seconds(),
 			float64(min)/interval.Seconds(),
 			float64(cur)/elap.Seconds(), elap)
-	}
-	defer func() {
-		wg.Wait()
-		report()
 	}()
 	for {
 		select {
@@ -222,6 +221,11 @@ func (p *perftest) run(stage string, isRand bool) {
 			return
 		}
 	}
+}
+
+func (p *perftest) clean() {
+	dir := fmt.Sprintf("client%d", id)
+	os.RemoveAll(dir)
 }
 
 func (p *perftest) create_write(name string) error {
@@ -261,6 +265,14 @@ func (p *perftest) rename(name string) error {
 	return err
 }
 
+func (p *perftest) unlink(name string) error {
+	err := os.Remove(name)
+	if err != nil {
+		err = os.Remove(name + "_rename")
+	}
+	return err
+}
+
 func main() {
 	defer mainRecover()
 	flag.Parse()
@@ -274,7 +286,7 @@ func main() {
 	} else {
 		p = newPerftest(count, segcount)
 	}
-	log.Printf("client%1d period %v %s", id, period, p)
+	log.Printf("client%d period %v %s", id, period, p)
 	if test {
 		return
 	}
@@ -284,5 +296,7 @@ func main() {
 	p.run("open_read", true)
 	p.run("open", true)
 	p.run("utime", true)
-	p.run("rename", true)
+	p.run("rename", false)
+	p.run("unlink", false)
+	p.clean()
 }

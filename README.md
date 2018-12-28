@@ -1,4 +1,4 @@
-# fs-test-plot
+# fs-benchmark
 This benchmark supports read-write and metadata performance test 
 on one distribute file system, such as [ceph](https://ceph.com), [moosefs](https://moosefs.com), [lizardfs](https://lizardfs.org/)
 and generates test graphs using pandas.
@@ -19,7 +19,7 @@ NAME=test TEST_LOOP=3 DIRECT="" bash $ROOT/rw-benchmark/iozone/perftest.sh | tee
 python $ROOT/rw-benchmark/plot/plot.py -f iozone-<name>-{}.tgz -r 3
 ```
 # metadata test 
-metadata test tests the performance of MDS of ceph, or master of moosefs
+metadata test tests the performance of MDS of ceph, or master of moosefs, or other fs
 ```
 Usage of perftest:
   -b uint
@@ -38,8 +38,9 @@ Usage of perftest:
         count of operations in one dir, k,m,g (default "10")
   -t    for test
   -v    show version
-
-example:
+```
+## Example
+```
 cd /path/to/mount/fs
 $ROOT/meta-benchmark/bin/perftest -n 3m -c 100 -id 1 -interval 1m -period 3h
 -n 3,000,000 files

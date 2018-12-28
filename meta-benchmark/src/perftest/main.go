@@ -66,7 +66,7 @@ func convert(str string) uint64 {
 		str = strings.ToLower(str)
 		if strings.LastIndexAny(str, "kmg") != -1 {
 			tmp, err := strconv.Atoi(str[:len(str)-1])
-            checkErr(err)
+			checkErr(err)
 			res = uint64(tmp)
 			switch str[len(str)-1] {
 			case 'k':
@@ -78,7 +78,7 @@ func convert(str string) uint64 {
 			}
 		} else {
 			tmp, err := strconv.Atoi(str)
-            checkErr(err)
+			checkErr(err)
 			res = uint64(tmp)
 		}
 	}
@@ -101,16 +101,16 @@ func newPerftest(count, segcount string) *perftest {
 		sum = (sum/seg + 1) * seg
 	}
 	dirs := sum / seg
-    data := make([]byte, bufsz)
-    _, err := rand.Read(data)
-    checkErr(err)
-    rand.Seed(time.Now().Unix())
+	data := make([]byte, bufsz)
+	_, err := rand.Read(data)
+	checkErr(err)
+	rand.Seed(time.Now().Unix())
 	return &perftest{sum: sum,
 		seg:        seg,
 		dirs:       dirs,
 		concurrent: 0,
-        rbuf:       make([]byte, bufsz),
-        wbuf:       data,
+		rbuf:       make([]byte, bufsz),
+		wbuf:       data,
 	}
 }
 
@@ -280,7 +280,7 @@ func main() {
 	}
 	log.Printf("%15s %14s %14s %14s %10s", "stage",
 		"max_tps", "min_tps", "avg_tps", "period")
-    p.run("create_write", false)
+	p.run("create_write", false)
 	p.run("open_read", true)
 	p.run("open", true)
 	p.run("utime", true)

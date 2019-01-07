@@ -187,6 +187,9 @@ func (p *perftest) work(stageName string, s stage) {
 	defer func() {
 		wg.Wait()
 		elap := time.Now().Sub(start)
+		if min == math.MaxUint64 {
+			min = 0
+		}
 		log.Printf("%14s %14.3f %14.3f %14.3f %-v", stageName,
 			float64(max)/interval.Seconds(),
 			float64(min)/interval.Seconds(),

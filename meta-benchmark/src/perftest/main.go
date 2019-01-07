@@ -85,6 +85,11 @@ func convert(str string) uint64 {
 	return res
 }
 
+type stage struct {
+	cb     func(name string) error
+	isRand bool
+}
+
 type perftest struct {
 	sum        uint64
 	dirs       uint64
@@ -92,6 +97,7 @@ type perftest struct {
 	concurrent uint64
 	rbuf       []byte
 	wbuf       []byte
+	stages     map[string]stage
 }
 
 func newPerftest() *perftest {
@@ -119,13 +125,21 @@ func newPerftest() *perftest {
 	_, err := rand.Read(data)
 	checkErr(err)
 	rand.Seed(time.Now().Unix())
-	return &perftest{sum: sum,
+	p := &perftest{sum: sum,
 		seg:        seg,
 		dirs:       dirs,
 		concurrent: cc,
 		rbuf:       make([]byte, bufsz),
 		wbuf:       data,
 	}
+	p.stages = make(map[string]stage)
+	p.stages["create_write"] = stage{p.create_write, false}
+	p.stages["open_read"] = stage{p.open_read, true}
+	p.stages["open"] = stage{p.open, true}
+	p.stages["utime"] = stage{p.utime, true}
+	p.stages["rename"] = stage{p.rename, false}
+	p.stages["unlink"] = stage{p.unlink, false}
+	return p
 }
 
 func (p *perftest) String() string {
@@ -133,7 +147,7 @@ func (p *perftest) String() string {
 		p.concurrent, p.sum, p.dirs, p.seg)
 }
 
-func (p *perftest) run(stage string, isRand bool) {
+func (p *perftest) work(stageName string, s stage) {
 	var exit, max, min, cur, last uint64
 	min = math.MaxUint64
 	checkTps := time.NewTicker(interval)
@@ -155,7 +169,7 @@ func (p *perftest) run(stage string, isRand bool) {
 				if atomic.LoadUint64(&exit) > 0 {
 					return
 				}
-				if isRand {
+				if s.isRand {
 					next = uint64(rand.Int63n(int64(p.seg)))
 				} else {
 					next++
@@ -165,22 +179,7 @@ func (p *perftest) run(stage string, isRand bool) {
 					}
 				}
 				name := fmt.Sprintf("%s/file%010d", dir, next)
-				switch stage {
-				case "create_write":
-					p.create_write(name)
-				case "open_read":
-					p.open_read(name)
-				case "open":
-					p.open(name)
-				case "utime":
-					p.utime(name)
-				case "rename":
-					p.rename(name)
-				case "unlink":
-					p.unlink(name)
-				default:
-					log.Fatal("invalid stage", stage)
-				}
+				s.cb(name)
 				atomic.AddUint64(&cur, 1)
 			}
 		}(dir)
@@ -188,7 +187,7 @@ func (p *perftest) run(stage string, isRand bool) {
 	defer func() {
 		wg.Wait()
 		elap := time.Now().Sub(start)
-		log.Printf("%14s %14.3f %14.3f %14.3f %-v", stage,
+		log.Printf("%14s %14.3f %14.3f %14.3f %-v", stageName,
 			float64(max)/interval.Seconds(),
 			float64(min)/interval.Seconds(),
 			float64(cur)/elap.Seconds(), elap)
@@ -211,6 +210,12 @@ func (p *perftest) run(stage string, isRand bool) {
 			atomic.StoreUint64(&exit, 1)
 			return
 		}
+	}
+}
+
+func (p *perftest) run() {
+	for s, f := range p.stages {
+		p.work(s, f)
 	}
 }
 
@@ -279,11 +284,6 @@ func main() {
 	}
 	log.Printf("%15s %14s %14s %14s %10s", "stage",
 		"max_tps", "min_tps", "avg_tps", "period")
-	p.run("create_write", false)
-	p.run("open_read", true)
-	p.run("open", true)
-	p.run("utime", true)
-	p.run("rename", false)
-	p.run("unlink", false)
+	p.run()
 	p.clean()
 }

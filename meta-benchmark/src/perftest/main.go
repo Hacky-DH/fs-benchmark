@@ -94,13 +94,27 @@ type perftest struct {
 	wbuf       []byte
 }
 
-func newPerftest(count, segcount string) *perftest {
+func newPerftest() *perftest {
 	sum := convert(count)
-	seg := convert(segcount)
-	if sum%seg != 0 {
-		sum = (sum/seg + 1) * seg
+	var dirs, seg, cc uint64
+	if concurrent > 1 {
+		cpu := uint64(runtime.NumCPU())
+		if concurrent > cpu {
+			concurrent = cpu
+		}
+		if sum%concurrent != 0 {
+			sum = (sum/concurrent + 1) * concurrent
+		}
+		seg = sum / concurrent
+		dirs, cc = concurrent, concurrent
+	} else {
+		seg = convert(segcount)
+		if sum%seg != 0 {
+			sum = (sum/seg + 1) * seg
+		}
+		dirs = sum / seg
+		cc = 1
 	}
-	dirs := sum / seg
 	data := make([]byte, bufsz)
 	_, err := rand.Read(data)
 	checkErr(err)
@@ -108,30 +122,7 @@ func newPerftest(count, segcount string) *perftest {
 	return &perftest{sum: sum,
 		seg:        seg,
 		dirs:       dirs,
-		concurrent: 0,
-		rbuf:       make([]byte, bufsz),
-		wbuf:       data,
-	}
-}
-
-func newPerftestC(count string, concurrent uint64) *perftest {
-	sum := convert(count)
-	cpu := uint64(runtime.NumCPU())
-	if concurrent > cpu {
-		concurrent = cpu
-	}
-	if sum%concurrent != 0 {
-		sum = (sum/concurrent + 1) * concurrent
-	}
-	seg := sum / concurrent
-	data := make([]byte, bufsz)
-	_, err := rand.Read(data)
-	checkErr(err)
-	rand.Seed(time.Now().Unix())
-	return &perftest{sum: sum,
-		seg:        seg,
-		dirs:       concurrent,
-		concurrent: concurrent,
+		concurrent: cc,
 		rbuf:       make([]byte, bufsz),
 		wbuf:       data,
 	}
@@ -280,12 +271,8 @@ func main() {
 		fmt.Println(versionstr)
 		return
 	}
-	var p *perftest
-	if concurrent > 1 {
-		p = newPerftestC(count, concurrent)
-	} else {
-		p = newPerftest(count, segcount)
-	}
+
+	p := newPerftest()
 	log.Printf("client%d period %v %s", id, period, p)
 	if test {
 		return

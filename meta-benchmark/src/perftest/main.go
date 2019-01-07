@@ -86,6 +86,7 @@ func convert(str string) uint64 {
 }
 
 type stage struct {
+	name   string
 	cb     func(name string) error
 	isRand bool
 }
@@ -97,7 +98,7 @@ type perftest struct {
 	concurrent uint64
 	rbuf       []byte
 	wbuf       []byte
-	stages     map[string]stage
+	stages     []stage
 }
 
 func newPerftest() *perftest {
@@ -132,13 +133,13 @@ func newPerftest() *perftest {
 		rbuf:       make([]byte, bufsz),
 		wbuf:       data,
 	}
-	p.stages = make(map[string]stage)
-	p.stages["create_write"] = stage{p.create_write, false}
-	p.stages["open_read"] = stage{p.open_read, true}
-	p.stages["open"] = stage{p.open, true}
-	p.stages["utime"] = stage{p.utime, true}
-	p.stages["rename"] = stage{p.rename, false}
-	p.stages["unlink"] = stage{p.unlink, false}
+	p.stages = make([]stage, 0)
+	p.stages = append(p.stages, stage{"create_write", p.create_write, false})
+	p.stages = append(p.stages, stage{"open_read", p.open_read, true})
+	p.stages = append(p.stages, stage{"open", p.open, true})
+	p.stages = append(p.stages, stage{"utime", p.utime, true})
+	p.stages = append(p.stages, stage{"rename", p.rename, false})
+	p.stages = append(p.stages, stage{"unlink", p.unlink, false})
 	return p
 }
 
@@ -147,7 +148,7 @@ func (p *perftest) String() string {
 		p.concurrent, p.sum, p.dirs, p.seg)
 }
 
-func (p *perftest) work(stageName string, s stage) {
+func (p *perftest) work(s stage) {
 	var exit, max, min, cur, last uint64
 	min = math.MaxUint64
 	checkTps := time.NewTicker(interval)
@@ -190,7 +191,7 @@ func (p *perftest) work(stageName string, s stage) {
 		if min == math.MaxUint64 {
 			min = 0
 		}
-		log.Printf("%14s %14.3f %14.3f %14.3f %-v", stageName,
+		log.Printf("%14s %14.3f %14.3f %14.3f %-v", s.name,
 			float64(max)/interval.Seconds(),
 			float64(min)/interval.Seconds(),
 			float64(cur)/elap.Seconds(), elap)
@@ -217,8 +218,8 @@ func (p *perftest) work(stageName string, s stage) {
 }
 
 func (p *perftest) run() {
-	for s, f := range p.stages {
-		p.work(s, f)
+	for _, s := range p.stages {
+		p.work(s)
 	}
 }
 

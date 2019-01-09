@@ -1,10 +1,11 @@
 # fs-benchmark
-This benchmark supports read-write and metadata performance test 
-on one distribute file system, such as [ceph](https://ceph.com), [moosefs](https://moosefs.com), [lizardfs](https://lizardfs.org/)
+This benchmark supports read-write and metadata performance test
+on the wide distribute file system, such as [ceph](https://ceph.com), [moosefs](https://moosefs.com), [lizardfs](https://lizardfs.org/) and so on
 and generates test graphs using pandas.
 
 # read-write test
-test include write, read, randread, randwrite
+This test uses [iozone](http://iozone.org/) to run the read-write test
+and includes write, read, randread, randwrite.
 
 ## default parameters
 ```
@@ -13,12 +14,13 @@ concurrent: 1 2 4 8 16
 file size: 1GiB
 ```
 ## run and plot
-```
+```bash
 cd /path/to/mount/fs
 NAME=test TEST_LOOP=3 DIRECT="" bash $ROOT/rw-benchmark/iozone/perftest.sh | tee /tmp/testlog
-python $ROOT/rw-benchmark/plot/plot.py -f iozone-<name>-{}.tgz -r 3
+# the result files is in $HOME dir
+python $ROOT/rw-benchmark/plot/plot.py -f $HOME/iozone-test-<date>-{}.tar.gz -r 3
 ```
-# metadata test 
+# metadata test
 metadata test tests the performance of MDS of ceph, or master of moosefs, or other fs
 ```
 Usage of perftest:

@@ -27,7 +27,7 @@ for i in $(seq 1 $TEST_LOOP);do
         done
     done
     sdir=$(basename $dir)
-    tar czf $sdir.tgz $sdir -C $HOME
+    tar -czf $dir.tar.gz -C $HOME $sdir
     # upload to server
-    # sshpass -p pwd scp -o StrictHostKeyChecking=no $dir.tgz user@host:/path
+    # sshpass -p pwd scp -o StrictHostKeyChecking=no $dir.tar.gz user@host:/path
 done

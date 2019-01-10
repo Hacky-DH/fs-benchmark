@@ -4,6 +4,8 @@ export GOPATH=$(CURDIR)
 
 flag+=-X main.versionstr=v$(version)$(shell date +.%Y%m%d.%H%M%S)
 
+.PHONY: all build deps fmt install deploy clean
+
 all: build
 
 deps:
